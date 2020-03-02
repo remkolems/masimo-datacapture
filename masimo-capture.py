@@ -101,6 +101,7 @@ class datastore_dump(object):
     v_exc = None
     v_exc1 = None
 
+    exc_normal_operation = False
     exc_sensor_no = False
     exc_sensor_defective = False
     exc_low_perfusion = False
@@ -242,6 +243,7 @@ class datastore_influxdb(datastore_dump):
         v_time_precision = "u" # Either ‘s’, ‘m’, ‘ms’ or ‘u’, defaults to None
 
         try:
+            # InfluxDb requires json body style 
             # Construct
             json_body = [
                 {
@@ -249,10 +251,7 @@ class datastore_influxdb(datastore_dump):
                     "tags":
                         {
                             "Serialnumber": int(self.sn),
-                            "Location": str(self.get_local_fqdn_hostname())     # Retrieve domain name of main cluster comp?
-                                                                                # e.g. FQDN = icc-bi-01.home (bedroom) 
-                                                                                # Just line in Ubuntu type: hostname -f
-                                                                                # Result is: icc-bi-01.home
+                            "Location": str(self.get_local_fqdn_hostname())
                         },
                    # "time": currentDateTimeInMicroSeconds,
                     "fields":
@@ -263,6 +262,8 @@ class datastore_influxdb(datastore_dump):
                             "alarm": int(self.alarm, 16),
                             "EXC": int(self.exc, 16),
                             "EXC1": int(self.exc1, 16),
+                            "exc_normal_operation": int(self.exc_normal_operation),
+                            "exc_sensor_no": int(self.exc_sensor_no),
                             "exc_sensor_defective": int(self.exc_sensor_defective),
                             "exc_low_perfusion": int(self.exc_low_perfusion),
                             "exc_pulse_search": int(self.exc_pulse_search),
@@ -438,7 +439,7 @@ class masimo:
         # ALARM: 000018
 
         # DISCLAIMER:---- #3BEA9I support ticket number with Masimo
-        # MASIMO Claims that the decode of ALARM bit fields is MASIMO Properitory information.
+        # MASIMO Claims that the decode of ALARM bit fields is MASIMO proprietary information.
         # The following is the email from masimo:
         # "
         # Unfortunately that is prorietary information.
@@ -503,17 +504,17 @@ class masimo:
         return
 
     def _parse_exception(self):
-        # Source: http://www.ontvep.ca/pdf/Masimo-Rad-8-User-Manual.pdf
+        # Source: https://github.com/remkolems/masimo-datacapture/blob/master/Masimo%20Rad-8/Masimo%20Rad-8%20Operator's%20Manual.pdf
         # Trend Data format
         # The exceptions are displayed as a 3 digit, ASCII encoded, hexadecimal
         # value. The binary bits of the hexadecimal value are encoded as follows:
         # 000 = Normal operation; no exceptions
-        # 001 = No Sensor
+        # 001 = No Sensor (connected to device)
         # 002 = Defective Sensor
         # 004 = Low Perfusion
         # 008 = Pulse Search
         # 010 = Interference
-        # 020 = Sensor Off
+        # 020 = Sensor Off (not connected to patient)
         # 040 = Ambient Light
         # 080 = Unrecognized Sensor
         # 100 = reserved
@@ -523,6 +524,7 @@ class masimo:
         # SET mode. It requires a SET sensor and needs to acquire some
         # clean data for this flag to be set
         val = int(self.store.exc, 16)
+        self.store.exc_normal_operation = True if val & 0 else False
         self.store.exc_sensor_no = True if val & 1 else False
         self.store.exc_sensor_defective = True if val & 2 else False
         self.store.exc_low_perfusion = True if val & 4 else False
@@ -540,7 +542,7 @@ class masimo:
                                          (1 << 11))
 
     def _parse_rad8_serial_1(self):
-        # 03/19/16 13:37:12 SN=0000093112 SPO2=---% BPM=---% DESAT=--
+        # 03/19/16 13:37:12 SN=0000093112 SPO2=---% BPM=--- DESAT=--
         # PIDELTA=+-- ALARM=0000 EXC=000001
         S1 = self.serial_string.decode(encoding='utf-8', errors='strict')
         S = S1.replace('=', ' ')
