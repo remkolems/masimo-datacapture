@@ -1,10 +1,7 @@
 # masimo-datacapture
-=======
-This is a basic program to capture data from Masimo Brand Pulse Oximeter and store the data in an influx database.
+This is a basic program to capture data from [Masimo Brand Pulse Oximeter](https://www.masimo.com/products/continuous/rad8/) and store the data in an [Influx database](https://www.influxdata.com/).
 
 # Masimo Rad-8
-See https://www.masimo.com/products/continuous/rad8/
-
 The Masimo Rad-8 needs to be set in ASCII mode 1. By default the device is set to ASCII mode 2 for the serial output. Hold down the Enter Button and the Down Button for 5 seconds to change the parameter. See [manual](https://github.com/remkolems/masimo-datacapture/blob/master/Masimo%20Rad-8/Masimo%20Rad-8%20Operator's%20Manual.pdf) page 4-14 (section 4 Setup menu level 3).
 
 ## Front
@@ -32,7 +29,8 @@ C. Perfusion Index (Pi) indicates arterial pulse signal strength. The Pi display
 
 
 # Task list
-- [ ] Remove ElasticSearch and MySQL
+## Basic mode
+- [ ] Fully remove ElasticSearch and MySQL
 - [x] Add Influx database support
 - [ ] Update code to latest standards
 - [ ] Add MQTT support
@@ -40,13 +38,21 @@ C. Perfusion Index (Pi) indicates arterial pulse signal strength. The Pi display
 - [ ] Add information about required hardware and setup
 - [ ] Add Home-Assistant specific configuration files
 - [ ] Describe use case and overall setup
+
+## Advanced mode
+- [ ] Describe reference hard- and software model
 - [ ] Add badges with build passed Python, Ubuntu, etc..
+- [ ] Add custom IoT hardware module to make the Masimo RAD-8 an true mobile/mesh data IoT device
+- [ ] Transition to Kubernetes (k3s)
+- [ ] Add Prometheus support
 - [ ] Add future goals and other endavours (amongst those are: Machine and Deep Learning, Kubernetes, integration with other medical devices and custom services)
 
 # References
 1. [Masimo RAD-8](https://www.masimo.com/products/continuous/rad8/)
 2. [Home-Assistant](https://www.home-assistant.io/)
-3. [MQTT Broker](https://github.com/home-assistant/hassio-addons/tree/master/mosquitto)
+3. [Influx database](https://github.com/hassio-addons/addon-influxdb)
+4. [MQTT Broker](https://github.com/home-assistant/hassio-addons/tree/master/mosquitto)
+
 
 # Credits
 - Jeroen Baten @ http://www.jeroenbaten.nl/cardio-oxygen-saturation-monitoring-home/
