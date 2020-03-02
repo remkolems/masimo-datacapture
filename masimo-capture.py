@@ -1,5 +1,16 @@
 #!/usr/bin/python
-# Copyright (c) 2016, Nishanth Menon
+# Copyright (c) 2020, Nishanth Menon/Remko Lems
+# Version:          1.2
+# Date:             02-March-2020
+# Changes:          - Added InFluxDb support
+#                   - Removed ElasticSearch support
+#                   - Removed MySQL support
+# To Do:            - Add MQTT support
+#                   - Add Prometheus support
+#                   - Add Home-Assistant support
+# Intended Usage:   Data recorded from Masimo to InfluxDb for further processing
+#                   and record data into Home-Assistant via MQTT.
+# 
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,26 +38,62 @@
 
 # Inspired by:
 # http://www.jeroenbaten.nl/cardio-oxygen-saturation-monitoring-home/
+# Nishanth Menon @ https://github.com/nmenon/masimo-datacapture
+#
+#######
+# General prerequisites
+#######
+# 1)    Externally running preconfigured Influx database.
+# 2)    Dedicated network connected small computer node connected directly to the Masimo via a 
+#       serial to usb adapter. 
+#       Note: A true mobile/mesh network connected Masimo is under research by me. Check GitHub account.
+# 3)    Dedicated Home-Assistant node
+#######
+# Masimo prerequisites
+#######
+# 1)    Requires ASCII mode 1. # RAD-8 default is ASCII-2. Set this to ASCII-1! 
+#       Hold arrow button w/ Enter button down for 5 seconds to change parameter
+# 2)    USB to RS232 Serial Adapter (with dedicated USB to Serial/UART/RS232 chipset i.e. FTDI)
+#       Note: to test PL2303 chipset (e.g. Ugreen via Amazon )
+#######
+# Prerequisites for script to run:
+#######
+# |- Dedicated computer node, e.g.: Raspberry Pi, Ubuntu server, UP, UP squared, Nvidia Jetson
+# |- Setup a virtual Python environment: sudo apt install python3-venv
+# |  - Note: See https://linuxize.com/post/how-to-create-python-virtual-environments-on-ubuntu-18-04/
+# |  - Select a directory for the setup of a new environment, within this directory: python3 -m venv Masimo-RAD8-env
+# |  - Open a new shell within the environment: source Masimo-RAD8-env//bin/activate
+# |  (- To exit the shell, type: deactivate)
+# |- Pip3 install: sudo apt install python3-pip
+# |- sudo -H pip3 install config pymysql
+# |- install a config.cfg file (or any other name is fine)
+# |- Call config file and script: python -c config.cfg
+#######
+# Masimo capture service
+#######
+# Auto starts the Masimo capture script when system is rebooted/restarted.
+# 
+# TODO
 
 import sys
 import serial
 import time
 import os
 import getopt
-import MySQLdb
 import datetime
-# sudo pip install config
+# sudo -H pip3 install config
 from config import Config
 import pymysql
 
-
 class datastore_dump(object):
+    sn = None
     spo2 = None
     bpm = None
     pi = None
     alarm = "000000"
     exc = "000000"
     exc1 = "000000"
+    v_sn = None
     v_spo2 = None
     v_bpm = None
     v_pi = None
@@ -131,131 +178,119 @@ class datastore_dump(object):
         self._print_data()
         return
 
+# InfluxDb database
+class datastore_influxdb(datastore_dump):
+    influxdb_host = None
+    influxdb_port = None
+    influxdb_usr = None
+    influxdb_pwd = None
+    influxdb_dbname = None
 
-class datastore_mysql(datastore_dump):
-    mysql_host = None
-    mysql_usr = None
-    mysql_psswd = None
-    mysql_db = None
-    mysql_table = None
-
-    cnx = None
+    ifdbc = None
     cur = None
 
     def parse_config(self, f):
-        self.mysql_host = f.mysql.host
-        self.mysql_usr = f.mysql.user
-        self.mysql_psswd = f.mysql.password
-        self.mysql_db = f.mysql.db
-        self.mysql_table = f.mysql.table_name
-
-    def connect(self):
-        # setting up database Connection
-        try:
-            self.cnx = MySQLdb.connect(self.mysql_host,
-                                       self.mysql_usr,
-                                       self.mysql_psswd,
-                                       self.mysql_db)
-            self.cur = self.cnx.cursor()
-        except MySQLdb.Error as e:
-            raise Exception('Data format error: MySQL error: ', e.args[1])
-
-    def store_data(self):
-        try:
-            self.cur.execute(
-                "INSERT INTO %s"
-                "(spo2, bpm, pi, alarm, exc, exc1)"
-                "VALUES(%d, %d, %f, %d, %d, %d)" %
-                (self.mysql_table, int(
-                    self.spo2), int(
-                    self.bpm), float(
-                    self.pi), int(
-                    self.alarm, 16), int(
-                        self.exc, 16), int(
-                            self.exc1, 16)))
-            self.cnx.commit()
-            # print "Data posted: " + self.cur._last_executed
-        except MySQLdb.Error as e:
-            print("ERROR %d IN CONNECTION: %s" % (e.args[0], e.args[1]))
-            print("Last query was: " + self.cur._last_executed)
-
-
-class datastore_elastic(datastore_dump):
-    elastic_host = None
-    elastic_port = None
-    elastic_usr = None
-    elastic_idx = None
-    elastic_table = None
-
-    es = None
-    cur = None
-
-    def parse_config(self, f):
-        self.elastic_host = f.elasticsearch.host
-        self.elastic_port = f.elasticsearch.port
-        self.elastic_idx = f.elasticsearch.index
-        self.elastic_table = f.elasticsearch.table_name
+        self.influxdb_host = f.influx.host
+        self.influxdb_port = f.influx.port
+        self.influxdb_usr = f.influx.user
+        self.influxdb_pwd = f.influx.password
+        self.influxdb_dbname = f.influx.dbname
 
     def initalize(self):
-        # sudo pip install elasticsearch
-        global Elasticsearch
+        # sudo -H pip3 install influxdb or sudo apt-get install python-influxdb
+        global Influxdb
         global strftime
         try:
-            from elasticsearch import Elasticsearch as Elasticsearch
+            from influxdb import InfluxDBClient as Influxdb
+            # from influxdb.client import InfluxDBClientError
             from time import gmtime, strftime
         except Exception as err:
-            raise Exception(
-                'elastic search Failed: "pip install elasticsearch"?',
-                str(err))
+            raise Exception('InfluxDb Failed: "pip3 install influxdb"?', str(err))
 
         return
 
     def connect(self):
         try:
-            self.es = Elasticsearch([{'host': self.elastic_host,
-                                      'port': self.elastic_port}])
+            self.ifdbc = Influxdb(self.influxdb_host,
+                                  self.influxdb_port,
+                                  self.influxdb_usr,
+                                  self.influxdb_pwd,
+                                  self.influxdb_dbname
+                                  )
+
         except Exception as err:
-            raise Exception('Elasticsearch connect failed :', str(err))
+            raise Exception('InfluxDb connection failed :', str(err))
+
+    def get_local_fqdn_hostname(self):
+        hostname = None
+
+        try:
+            import socket
+            if socket.gethostname().find('.') >= 0:
+                hostname = socket.gethostname()
+                #hostname = socket.getfqdn()
+                return hostname
+            else:
+                # Always return a fully qualified hostname
+                hostname = socket.gethostbyaddr(socket.gethostname())[0]
+                return hostname
+        except Exception as err:
+            raise Exception('Hostname failed to retrieve :', str(err))
 
     def store_data(self):
+        currentDateTimeInMicroSeconds = datetime.datetime.now().strftime("%H:%M:%S.%f")
+        v_time_precision = "u" # Either ‘s’, ‘m’, ‘ms’ or ‘u’, defaults to None
 
-        l_time = time.localtime()
-        e_id = strftime("%Y%m%d%H%M%S", l_time)
-        e_time = strftime("%m-%d-%Y %H:%M:%S %Z", l_time)
         try:
-            self.es.index(index=self.elastic_idx,
-                          doc_type=self.elastic_table,
-                          id=e_id,
-                          body={
-                              "time": str(e_time),
-                              "SPO2": int(self.spo2),
-                              "BPM": int(self.bpm),
-                              "PI": float(self.pi),
-                              "alarm": int(self.alarm, 16),
-                              "EXC": int(self.exc, 16),
-                              "EXC1": int(self.exc1, 16),
-                              "exc_sensor_no": int(self.exc_sensor_no),
-                              "exc_sensor_defective": int(self.exc_sensor_defective),
-                              "exc_low_perfusion": int(self.exc_low_perfusion),
-                              "exc_pulse_search": int(self.exc_pulse_search),
-                              "exc_interference": int(self.exc_interference),
-                              "exc_sensor_off": int(self.exc_sensor_off),
-                              "exc_ambient_light": int(self.exc_ambient_light),
-                              "exc_sensor_unrecognized": int(self.exc_sensor_unrecognized),
-                              "exc_low_signal_iq": int(self.exc_low_signal_iq),
-                              "exc_masimo_set": int(self.exc_masimo_set),
-                              "exc_unknown": int(self.exc_unknown),
-                              "alm_mute_pressed": int(self.alm_mute_pressed),
-                              "alm_triggered": int(self.alm_triggered),
-                              "alm_bpm_low": int(self.alm_bpm_low),
-                              "alm_bpm_high": int(self.alm_bpm_high),
-                              "alm_spo2_low": int(self.alm_spo2_low),
-                              "alm_spo2_high": int(self.alm_spo2_high),
-                              "alm_unknown": int(self.alm_unknown)
-                          })
-        except Exception as err:
-            print('Elasticsearch data push failed :' + str(err))
+            # Construct
+            json_body = [
+                {
+                    "measurement": "Masimo_RAD8",
+                    "tags":
+                        {
+                            "Serialnumber": int(self.sn),
+                            "Location": str(self.get_local_fqdn_hostname())     # Retrieve domain name of main cluster comp?
+                                                                                # e.g. FQDN = icc-bi-01.home (bedroom) 
+                                                                                # Just line in Ubuntu type: hostname -f
+                                                                                # Result is: icc-bi-01.home
+                        },
+                   # "time": currentDateTimeInMicroSeconds,
+                    "fields":
+                        {
+                            "SPO2": int(self.spo2),
+                            "BPM": int(self.bpm),
+                            "PI": float(self.pi),
+                            "alarm": int(self.alarm, 16),
+                            "EXC": int(self.exc, 16),
+                            "EXC1": int(self.exc1, 16),
+                            "exc_sensor_defective": int(self.exc_sensor_defective),
+                            "exc_low_perfusion": int(self.exc_low_perfusion),
+                            "exc_pulse_search": int(self.exc_pulse_search),
+                            "exc_interference": int(self.exc_interference),
+                            "exc_sensor_off": int(self.exc_sensor_off),
+                            "exc_ambient_light": int(self.exc_ambient_light),
+                            "exc_sensor_unrecognized": int(self.exc_sensor_unrecognized),
+                            "exc_low_signal_iq": int(self.exc_low_signal_iq),
+                            "exc_masimo_set": int(self.exc_masimo_set),
+                            "exc_unknown": int(self.exc_unknown),
+                            "alm_mute_pressed": int(self.alm_mute_pressed),
+                            "alm_triggered": int(self.alm_triggered),
+                            "alm_bpm_low": int(self.alm_bpm_low),
+                            "alm_bpm_high": int(self.alm_bpm_high),
+                            "alm_spo2_low": int(self.alm_spo2_low),
+                            "alm_spo2_high": int(self.alm_spo2_high),
+                            "alm_unknown": int(self.alm_unknown)
+                        }
+                }
+            ]
+	    
+            print(json_body)
 
+            # Write json_body to influxdb
+            self.ifdbc.write_points(json_body, time_precision = v_time_precision, protocol='json')
+
+        except Exception as err:
+            print ('InfluxDb data write points failed :' + str(err))
 
 class masimo:
 
@@ -323,6 +358,9 @@ class masimo:
 
     def is_format_valid(self):
         # First verify that the strings are all proper in the right places..
+        if self.store.v_sn != 'SN':
+            raise Exception('Data format error: SN is: ', self.store.v_sn)
+
         if self.store.v_spo2 != 'SPO2':
             raise Exception('Data format error: SPO2 is: ', self.store.v_spo2)
 
@@ -333,9 +371,7 @@ class masimo:
             raise Exception('Data format error: PI is: ', self.store.v_pi)
 
         if self.store.v_alarm != "ALARM":
-            raise Exception(
-                'Data format error: ALARM is: ',
-                self.store.v_alarm)
+            raise Exception('Data format error: ALARM is: ', self.store.v_alarm)
 
         if self.store.v_exc != "EXC":
             raise Exception('Data format error: EXC is: ', self.store.v_exc)
@@ -345,9 +381,10 @@ class masimo:
 
     def is_info_valid(self):
         # Verify if the data is valid as well
-        # - SPO2, BPM, ALARM, EXC, EXC1 should be int
+        # - SN, SPO2, BPM, ALARM, EXC, EXC1 should be int
         # - PI should be a float
         try:
+            tmp = int(self.store.sn)
             tmp = int(self.store.spo2)
             tmp = int(self.store.bpm)
             tmp1 = float(self.store.pi)
@@ -356,11 +393,12 @@ class masimo:
             tmp = int(self.store.exc1, 16),
         except Exception as err:
             raise Exception('Data contents invalid',
-                            "SPO2=" + self.store.spo2 +
-                            "BPM=" + self.store.bpm +
-                            "PI=" + self.store.pi +
-                            "ALARM=" + self.store.alarm +
-                            "EXC=" + self.store.exc +
+                            "SN=" + self.store.sn + ' ' +
+                            "SPO2=" + self.store.spo2 + ' ' +
+                            "BPM=" + self.store.bpm + ' ' +
+                            "PI=" + self.store.pi + ' ' +
+                            "ALARM=" + self.store.alarm + ' ' +
+                            "EXC=" + self.store.exc + ' ' +
                             "EXC1=" + self.store.exc1)
 
     def is_data_valid(self):
@@ -509,6 +547,8 @@ class masimo:
         S = S.replace('%', ' ')
         ord = S.split(' ')
 
+        # Label
+        self.store.v_sn = pymysql.escape_string(ord[2])
         self.store.v_spo2 = pymysql.escape_string(ord[4])
         self.store.v_bpm = pymysql.escape_string(ord[7])
         self.store.v_pi = pymysql.escape_string(ord[9])
@@ -516,6 +556,8 @@ class masimo:
         self.store.v_exc = pymysql.escape_string(ord[24])
         self.store.v_exc1 = "EXC1"
 
+        # Value
+        self.store.sn = pymysql.escape_string(ord[3])
         self.store.spo2 = pymysql.escape_string(ord[5])
         self.store.bpm = pymysql.escape_string(ord[8])
         self.store.pi = pymysql.escape_string(ord[10])
@@ -532,6 +574,7 @@ class masimo:
         S = S.replace('%', ' ')
         ord = S.split(' ')
 
+        self.store.v_sn = pymysql.escape_string(ord[2])
         self.store.v_spo2 = pymysql.escape_string(ord[4])
         self.store.v_bpm = pymysql.escape_string(ord[7])
         self.store.v_pi = pymysql.escape_string(ord[9])
@@ -539,6 +582,7 @@ class masimo:
         self.store.v_exc = pymysql.escape_string(ord[31])
         self.store.v_exc1 = pymysql.escape_string(ord[33])
 
+        self.store.sn = pymysql.escape_string(ord[3])
         self.store.spo2 = pymysql.escape_string(ord[5])
         self.store.bpm = pymysql.escape_string(ord[8])
         self.store.pi = pymysql.escape_string(ord[10])
@@ -579,7 +623,7 @@ class main:
         except Exception as err:
             raise Exception('Missing/Invalid params in config file for :' +
                             str(err),
-                            "db_type should be one of 'mysql' 'dump' 'elasticsearch'")
+                            "db_type should be one of 'mysql' 'influx' 'dump' 'elasticsearch'")
         # Optional Properties
         try:
             self.term = self.f.serial_port
@@ -592,6 +636,8 @@ class main:
 
         if db_type == "mysql":
             self.store = datastore_mysql()
+        elif db_type == "influx":
+            self.store = datastore_influxdb()
         elif db_type == "elasticsearch":
             self.store = datastore_elastic()
         elif db_type == "dump":
@@ -676,3 +722,4 @@ class main:
 if __name__ == "__main__":
     m = main()
     m.main()
+
