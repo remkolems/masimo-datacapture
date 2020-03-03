@@ -108,19 +108,21 @@ The exceptions are displayed as a 3 digit, ASCII encoded, hexadecimal value. The
 ## Advanced
 - [ ] Describe reference hard- and software model
 - [ ] Add badges with build passed Python, Ubuntu, etc..
-- [ ] Describe and add custom Internet of Medical Things (IoMT) hardware module to make the Masimo RAD-8 a true mobile/mesh data IoT device. Unfortunately RAD-8 is very old tech / pre mobile era ...
+- [ ] Describe and add custom Internet of Medical Things (IoMT) hardware module to make the Masimo RAD-8 a true mobile/mesh data IoMT device/hub. Unfortunately RAD-8 is very old tech / pre mobile era ... heavily endorsed by the conservative (academic) health care and/or insurrance sector.
 - [ ] Transition to Kubernetes (k3s)
+- [ ] Explore KubeEdge
+- [ ] Explore machine/deep learning and predictive analytics
+- [ ] Integration with other medical devices
 - [ ] Add Prometheus support
-- [ ] Add future goals and other endavours (amongst those are: Machine and Deep Learning, Kubernetes, integration with other medical devices and custom services)
 
 # References
 1. [Masimo RAD-8](https://www.masimo.com/products/continuous/rad8/)
 2. [Home-Assistant](https://www.home-assistant.io/)
 3. [Influx database](https://github.com/hassio-addons/addon-influxdb)
 4. [MQTT Broker](https://github.com/home-assistant/hassio-addons/tree/master/mosquitto)
-5. [OpenICE](https://www.openice.info/) Java ... and ... medical devices (:grimacing:), site is buggy
-6. https://github.com/samdware Opensourceforge data of OpenICE
-7. http://mdpnp.mgh.harvard.edu/ Operating since 2004
+5. [OpenICE](https://www.openice.info/) Java ... and ... medical devices (:grimacing:) / site is buggy
+6. https://github.com/samdware Sourceforge data of OpenICE
+7. http://mdpnp.mgh.harvard.edu/ Operating since 2004 / MD PnP program
 
 # Credits
 - Jeroen Baten @ http://www.jeroenbaten.nl/cardio-oxygen-saturation-monitoring-home/
