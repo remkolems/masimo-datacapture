@@ -1,5 +1,7 @@
 # masimo-datacapture
-This is a basic program to capture data from [Masimo Brand Pulse Oximeter](https://www.masimo.com/products/continuous/rad8/) and store the data in an [Influx database](https://www.influxdata.com/).
+This is a basic program to capture data from [Masimo Brand Pulse Oximeter](https://www.masimo.com/products/continuous/rad8/) and store the data in an [Influx database](https://www.influxdata.com/) for further extensive analysis.
+
+Home-assistant (smart home automation system) is used to display real-time data and interact with end-users/care-takers and other connected devices within a smart home environment.
 
 # Masimo Rad-8
 The Masimo Rad-8 needs to be set in ASCII mode 1. By default the device is set to ASCII mode 2 for the serial output. Hold down the Enter Button and the Down Button for 5 seconds to change the parameter. See [manual](https://github.com/remkolems/masimo-datacapture/blob/master/Masimo%20Rad-8/Masimo%20Rad-8%20Operator's%20Manual.pdf) page 4-14 (section 4 Setup menu level 3).
@@ -39,15 +41,15 @@ Do not rely on the date and time of the Masimo device. That is by far not accura
 | EXC                      | EXC        | integer  | hexidecimal number   | Exceptions, also translated to other field names |
 
 ## Alarm field names (translated)
-| Translated Alarm field name | Description |
-|-----------------------------|-------------|
-| alm_mute_pressed            | With proper sensor data collected, press and release mute button: we see 0x20 being set on ALARM and cleared -> (bit 5) |
-| alm_triggered               | Based on data that everytime Alarm is audible and flashing, it is accompanied with data 0x10 -> bit 4 set               |
-| alm_bpm_low                 | BPM is lower than preset range (BPM is too low), data is 0x18 -> bit 3                                                  |
-| alm_bpm_high                | BPM is higher than preset range (BPM is too high), data is 0x14 -> bit 2                                                |
-| alm_spo2_low                | Oxygen saturation is too low, data is 0x12 -> This should imply bit 1 is O2 lower than limit                            |
-| alm_spo2_high               | Oxygen daturation is too high, data is 0x11 -> This should imply bit 0 is O2 higher than limit                          |
-| alm_unknown                 | All other none known values. Save it for future analysis                                                                |
+| Translated Alarm field name | Description | Data value |
+|-----------------------------|-------------|-------------|
+| alm_mute_pressed            | With proper sensor data collected, press and release mute button | 0x20 being set on ALARM and cleared -> (bit 5) |
+| alm_triggered               | Based on data that everytime Alarm is audible and flashing | 0x10 -> bit 4 set                                    |
+| alm_bpm_low                 | BPM is lower than preset range (BPM is too low) | 0x18 -> bit 3 set                                               |
+| alm_bpm_high                | BPM is higher than preset range (BPM is too high) | 0x14 -> bit 2 set                                             |
+| alm_spo2_low                | Oxygen saturation is too low | 0x12 -> This should imply bit 1 is O2 lower than limit                             |
+| alm_spo2_high               | Oxygen daturation is too high | 0x11 -> This should imply bit 0 is O2 higher than limit                           |
+| alm_unknown                 | All other none known values. Save it for future analysis                                                          |
 
 ## Exceptions (translated)
 The exceptions are displayed as a 3 digit, ASCII encoded, hexadecimal value. The binary bits of the hexadecimal value are encoded as follows:
@@ -106,7 +108,7 @@ The exceptions are displayed as a 3 digit, ASCII encoded, hexadecimal value. The
 ## Advanced
 - [ ] Describe reference hard- and software model
 - [ ] Add badges with build passed Python, Ubuntu, etc..
-- [ ] Describe and add custom IoT hardware module to make the Masimo RAD-8 an true mobile/mesh data IoT device
+- [ ] Describe and add custom Internet of Medical Things (IoMT) hardware module to make the Masimo RAD-8 a true mobile/mesh data IoT device. Unfortunately RAD-8 is very old tech / pre mobile era ...
 - [ ] Transition to Kubernetes (k3s)
 - [ ] Add Prometheus support
 - [ ] Add future goals and other endavours (amongst those are: Machine and Deep Learning, Kubernetes, integration with other medical devices and custom services)
@@ -116,9 +118,9 @@ The exceptions are displayed as a 3 digit, ASCII encoded, hexadecimal value. The
 2. [Home-Assistant](https://www.home-assistant.io/)
 3. [Influx database](https://github.com/hassio-addons/addon-influxdb)
 4. [MQTT Broker](https://github.com/home-assistant/hassio-addons/tree/master/mosquitto)
-5. [OpenICE](https://www.openice.info/)
-6. https://github.com/samdware
-7. http://www.mdpnp.org/MD_PnP_Program___OpenICE.html
+5. [OpenICE](https://www.openice.info/) Java ... and ... medical devices (:grimacing:), site is buggy
+6. https://github.com/samdware Opensourceforge data of OpenICE
+7. http://mdpnp.mgh.harvard.edu/ Operating since 2004
 
 # Credits
 - Jeroen Baten @ http://www.jeroenbaten.nl/cardio-oxygen-saturation-monitoring-home/
