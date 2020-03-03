@@ -116,7 +116,9 @@ The exceptions are displayed as a 3 digit, ASCII encoded, hexadecimal value. The
 2. [Home-Assistant](https://www.home-assistant.io/)
 3. [Influx database](https://github.com/hassio-addons/addon-influxdb)
 4. [MQTT Broker](https://github.com/home-assistant/hassio-addons/tree/master/mosquitto)
-
+5. [OpenICE](https://www.openice.info/)
+6. https://github.com/samdware
+7. http://www.mdpnp.org/MD_PnP_Program___OpenICE.html
 
 # Credits
 - Jeroen Baten @ http://www.jeroenbaten.nl/cardio-oxygen-saturation-monitoring-home/
