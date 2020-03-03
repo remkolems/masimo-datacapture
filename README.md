@@ -1,7 +1,7 @@
 # masimo-datacapture
 This is a basic program to capture data from [Masimo Brand Pulse Oximeter](https://www.masimo.com/products/continuous/rad8/) and store the data in an [Influx database](https://www.influxdata.com/) for further extensive analysis.
 
-Home-assistant (smart home automation system) is used to display real-time data and interact with end-users/care-takers and other connected devices within a smart home environment.
+Home-assistant (smart home automation system) is used to display real-time data and interact with end-users/care-takers and other connected devices within a smart home environment. Masimo-datacapture is connected via MQTT to Home-Assistant.
 
 # Masimo Rad-8
 The Masimo Rad-8 needs to be set in ASCII mode 1. By default the device is set to ASCII mode 2 for the serial output. Hold down the Enter Button and the Down Button for 5 seconds to change the parameter. See [manual](https://github.com/remkolems/masimo-datacapture/blob/master/Masimo%20Rad-8/Masimo%20Rad-8%20Operator's%20Manual.pdf) page 4-14 (section 4 Setup menu level 3).
@@ -28,7 +28,7 @@ Do not rely on the date and time of the Masimo device. That is by far not accura
 | Serial output field name | Tags         | Type    | Description                        | Source                      | Example                |
 |--------------------------|--------------|---------|------------------------------------|-----------------------------|------------------------|
 | SN                       | Serialnumber | integer | Unique serial number of device     | Masimo device               | 93112                  |
-|                          | Location     | string  | Fully qualified domain name (FQDN) | Deducted from computer node | masimo_rad8.patient.local |
+|                          | SourceFQDN   | string  | Fully qualified domain name (FQDN) | Deducted from computer node | masimo_rad8.patient.local |
 
 ## Data points or field names retrieved
 | Serial output field name | Field name | Value    | Value type           | Description   |
@@ -39,6 +39,7 @@ Do not rely on the date and time of the Masimo device. That is by far not accura
 | PIDELTA                  | PI         | float    | number with decimals | Perfusion Index (Pi) indicates arterial pulse signal strength  |
 | ALARM                    | Alarm      | integer  | hexidecimal number   | Value is Masimo proprietary information, deduced and translated to other field names |
 | EXC                      | EXC        | integer  | hexidecimal number   | Exceptions, also translated to other field names |
+| EXC1                     | EXC1       | integer  | hexidecimal number   | Exceptions |
 
 ## Alarm field names (translated)
 | Translated Alarm field name | Description | Data value |

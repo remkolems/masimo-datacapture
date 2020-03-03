@@ -251,7 +251,7 @@ class datastore_influxdb(datastore_dump):
                     "tags":
                         {
                             "Serialnumber": int(self.sn),
-                            "Location": str(self.get_local_fqdn_hostname())
+                            "SourceFQDN": str(self.get_local_fqdn_hostname())
                         },
                    # "time": currentDateTimeInMicroSeconds,
                     "fields":
